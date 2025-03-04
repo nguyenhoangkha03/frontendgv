@@ -1,4 +1,4 @@
-.sidebar {
+/* .sidebar {
     width: 300px;
     height: 100%;
     background-color: rgb(26, 32, 53);
@@ -202,7 +202,7 @@
 }
 
 /* Zoom */
-.sidebar.zoom {
+/* .sidebar.zoom {
     width: 100px;
 }
 
@@ -225,4 +225,4 @@
 
 .sidebar-bottom.zoom {
     justify-content: center;
-}
+}  */

@@ -1,7 +1,7 @@
 import axios from "axios"
 
 console.log("Axios:", axios)
-const API_URL = 'https://23tg8v1m-3333.asse.devtunnels.ms/api/student'
+const API_URL = 'http://localhost:3333/api/student'
 
 export const getStudents = async () => {
     try {
@@ -44,6 +44,42 @@ export const updateStudent = async (id, classs) => {
 export const getStudentById = async (id) => {
     try {
       const response = await axios.get(`${API_URL}/${id}`);
+      return response.data;
+    } catch (error) {
+      return null;
+    }
+}
+
+export const getStudentByIdClass = async (id) => {
+    try {
+      const response = await axios.get(`${API_URL}/class/${id}`);
+      return response.data;
+    } catch (error) {
+      return null;
+    }
+}
+
+export const getStudentByIdClassAndIdSection = async (idClass, idSection) => {
+  try {
+    const response = await axios.get(`${API_URL}/class-section/${idClass}/${idSection}`);
+    return response.data;
+  } catch (error) {
+    return null;
+  }
+}
+
+export const getStudentByIdClassAndIdSectionAndIdSchedule = async (idClass, idSection, idSchedule) => {
+  try {
+    const response = await axios.get(`${API_URL}/class-section-schedule/${idClass}/${idSection}/${idSchedule}`);
+    return response.data;
+  } catch (error) {
+    return null;
+  }
+}
+
+export const getStudentByName = async (name) => {
+    try {
+      const response = await axios.get(`${API_URL}/name/${name}`);
       return response.data;
     } catch (error) {
       return null;

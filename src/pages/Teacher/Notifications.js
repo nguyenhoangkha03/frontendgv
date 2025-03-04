@@ -40,12 +40,10 @@ export default function Notifications() {
   );
 
   return (
-    <div className="min-h-screen from-blue-800 to-white text-black flex flex-col  ">
+    <div className="min-h-screen from-blue-800 to-white text-black flex flex-col mt-24 ">
         <Header />
-
-           {/* main */}
         <div className="p-5">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-red-500 mb-4 flex items-center gap-2">
         <Bell size={24} /> Thông báo ({filteredNotifications.length})
       </h2>
 
@@ -73,9 +71,9 @@ export default function Notifications() {
             {notif.type === "info" && <Info className="text-blue-500" />}
             {notif.type === "alert" && <AlertTriangle className="text-red-500" />}
             {notif.type === "success" && <CheckCircle className="text-green-500" />}
-            <div className="flex-1">
-              <p className="text-sm">{notif.message}</p>
-              <span className="text-xs text-gray-500">{notif.time}</span>
+            <div className="w-full">
+              <p className="text-lg text-gray-800 font-semibold">{notif.message}</p>
+              <span className="text-sm text-gray-500 block w-40">{notif.time}</span>
             </div>
             {!notif.read && (
               <button
@@ -95,9 +93,9 @@ export default function Notifications() {
         ))}
       </div>
 
-      <div className="flex justify-between mt-4">
+      <div className="flex justify-between mt-4 fixed bottom-0 left-0 right-0">
         <button
-          className="p-2 bg-gray-300 rounded"
+          className="p-2 bg-green-300 rounded font-semibold"
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           disabled={currentPage === 1}
         >
@@ -105,7 +103,7 @@ export default function Notifications() {
         </button>
         <span>Trang {currentPage} / {totalPages}</span>
         <button
-          className="p-2 bg-gray-300 rounded"
+          className="p-2 bg-green-300 rounded font-semibold"
           onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
           disabled={currentPage === totalPages}
         >

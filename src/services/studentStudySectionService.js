@@ -38,6 +38,15 @@ export const updateStudentStudySection = async (id, classs) => {
     }
 }
 
+export const updateScore = async (id, classs) => {
+  try {
+    const response = await axios.put(`${API_URL}/update/score/${id}`, classs)
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
 export const getStudentStudySectionById = async (id) => {
     try {
       const response = await axios.get(`${API_URL}/${id}`);
@@ -45,4 +54,13 @@ export const getStudentStudySectionById = async (id) => {
     } catch (error) {
       return null;
     }
+}
+
+export const getStudentStudySectionByIdSection = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/section/${id}`);
+    return response.data;
+  } catch (error) {
+    return null;
+  }
 }

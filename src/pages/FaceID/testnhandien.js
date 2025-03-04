@@ -5,7 +5,9 @@ import { detectFace } from '../../services/faceService';
 import "../../pages/FaceID/test.css";
 import {getStudentByMssv} from '../../services/studentService';
 import {getClassById} from '../../services/classService';
-import {getClassScheduleById} from '../../services/classscheduleService'
+import {getClassScheduleByClassIdAndDate } from '../../services/classscheduleService';
+import {getSectionClassById} from '../../services/sectionClassService';
+import {getSubjectById} from '../../services/subjectService'
 import { useNavigate } from "react-router-dom";
 
 const FaceRecognition = ({ selectedSubject }) => {
@@ -20,30 +22,171 @@ const FaceRecognition = ({ selectedSubject }) => {
   };
 
 
+  // useEffect(() => {
+  //   const interval = setInterval(async () => {
+  //     if (webcamRef.current && canCapture) {
+  //       const imageSrc = webcamRef.current.getScreenshot();
+  //       if (imageSrc) {
+  //         setCanCapture(false);
+  //         const result = await detectFace(imageSrc);
+  //         if (result && result.shouldSave) {
+  //           const data = await getStudentByMssv("217060166");
+  //           const classed = await getClassById(data.id_lop);
+  //           const classschedule = await getClassScheduleByClassIdAndDate(data.id_lop);
+  //           const sectionClass = await getSectionClassById(classschedule[1].id_lop_hoc_phan);
+  //           // const subject = await getSubjectById(sectionClass[1].id_mon_hoc);
+  //           console.log("data", classschedule);
+  //           console.log(sectionClass);
+  //           // console.log(subject);
+          
+  //           // const classschedule = await getClassScheduleById(data.id_lop);
+  //           // console.log("Dữ liệu lớp học phần: ",classschedule);
+  //           setDataList((prevDataList) => [
+  //             ...prevDataList,
+  //             { MSSV: result.match, NAME: data.ho_ten,CLASS: classed.ten_lop,TIME: result.time },
+  //           ]);
+  //         }
+  //         setCanCapture(true);
+  //       }
+  //     }
+  //   }, 1000);
+
+  //   return () => clearInterval(interval);
+  // }, [canCapture]);
+
+  const sendAttendance = async (id_sinh_vien, id_lich_hoc) => {
+      if (!id_sinh_vien || !id_lich_hoc) {
+          console.error("Thiếu thông tin sinh viên hoặc lịch học.");
+          return;
+      }
+
+      try {
+          // Lấy thời gian hiện tại (HH:mm:ss - định dạng 24h)
+          const now = new Date();
+          const timeString = now.toLocaleTimeString("en-GB", { hour12: false });
+
+          const response = await fetch("http://localhost:3333/api/diem-danh", {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                  id_sinh_vien,
+                  id_lich_hoc,
+                  thoi_gian: timeString,
+              }),
+          });
+
+          // Kiểm tra xem phản hồi từ server có hợp lệ không
+          if (!response.ok) {
+              throw new Error(`Lỗi server: ${response.status}`);
+          }
+
+          const data = await response.json();
+          
+          if (data.success) {
+              console.log(`✅ Điểm danh thành công: ${data.message}`);
+          } else {
+              console.warn(`⚠️ Điểm danh thất bại: ${data.message}`);
+          }
+      } catch (error) {
+          console.error("❌ Lỗi khi gửi điểm danh:", error);
+      }
+  };
+
+
+
+
+
+
   useEffect(() => {
     const interval = setInterval(async () => {
-      if (webcamRef.current && canCapture) {
-        const imageSrc = webcamRef.current.getScreenshot();
-        if (imageSrc) {
-          setCanCapture(false);
-          const result = await detectFace(imageSrc);
-          if (result && result.shouldSave) {
-            const data = await getStudentByMssv(result.match);
-            const classed = await getClassById(data.id_lop);
-            // const classschedule = await getClassScheduleById(data.id_lop);
-            // console.log("Dữ liệu lớp học phần: ",classschedule);
-            setDataList((prevDataList) => [
-              ...prevDataList,
-              { MSSV: result.match, NAME: data.ho_ten,CLASS: classed.ten_lop, MON: selectedSubject, TIME: result.time },
-            ]);
-          }
-          setCanCapture(true);
+        if (webcamRef.current && canCapture) {
+            const imageSrc = webcamRef.current.getScreenshot();
+            if (imageSrc) {
+                setCanCapture(false);
+                const result = await detectFace(imageSrc);
+
+                if (result && result.shouldSave) {
+                    const data = await getStudentByMssv(result.match);
+                    const classed = await getClassById(data.id_lop);
+                    const classschedule = await getClassScheduleByClassIdAndDate(data.id_lop);
+
+                    if (!classschedule || classschedule.length === 0) {
+                        console.log("Không có lịch học hôm nay!");
+                        setCanCapture(true);
+                        return;
+                    }
+
+                    // Xác định buổi học hiện tại
+                    const currentHour = new Date().getHours();
+                    let currentSession;
+                    if (currentHour < 12) {
+                        currentSession = 1;
+                    } else if (currentHour < 18) {
+                        currentSession = 2;
+                    } else {
+                        currentSession = 3;
+                    }
+
+                    // Lọc danh sách lớp học phù hợp với buổi học hiện tại
+                    const currentClasses = classschedule.filter(cls => {
+                        const startPeriod = cls.tu_tiet;
+                        return (startPeriod <= 5 && currentSession === 1) || 
+                               (startPeriod > 5 && startPeriod <= 10 && currentSession === 2) ||
+                               (startPeriod > 10 && currentSession === 3);
+                    });
+
+                    if (!currentClasses.length) {
+                        console.log(`Không có môn học vào buổi ${currentSession}`);
+                        setCanCapture(true);
+                        return;
+                    }
+
+                    let sentAttendance = new Set(); // Lưu các ID đã điểm danh
+                    let subjects = [];
+
+                    for (let cls of currentClasses) {
+                        const sectionClass = await getSectionClassById(cls.id_lop_hoc_phan);
+                        if (sectionClass && sectionClass.id_mon_hoc) {
+                            const subject = await getSubjectById(sectionClass.id_mon_hoc);
+                            subjects.push(subject.ten_mon);
+
+                            // Chỉ gửi điểm danh nếu chưa có trong danh sách
+                            if (!sentAttendance.has(cls.id_lich_hoc)) {
+                                await sendAttendance(data.id_sinh_vien, cls.id_lich_hoc, result.time);
+                                sentAttendance.add(cls.id_lich_hoc);
+                            }
+                        }
+                    }
+
+                    // Cập nhật danh sách dữ liệu điểm danh
+                    setDataList((prevDataList) => [
+                        ...prevDataList,
+                        { 
+                            MSSV: result.match, 
+                            NAME: data.ho_ten,
+                            CLASS: classed.ten_lop,
+                            SUBJECT: subjects.join(", "), 
+                            TIME: result.time 
+                        },
+                    ]);
+                }
+                setCanCapture(true);
+            }
         }
-      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [canCapture]);
+}, [canCapture]);
+
+
+
+
+
+
+
+
 
   // Lưu file Excel
   const saveToExcel = () => {
@@ -86,7 +229,7 @@ const FaceRecognition = ({ selectedSubject }) => {
                 <td>{item.MSSV}</td>
                 <td>{item.NAME}</td>
                 <td>{item.CLASS}</td>
-                <td>{item.MON}</td>
+                <td>{item.SUBJECT}</td>
                 <td>{item.TIME}</td>
               </tr>
             ))}

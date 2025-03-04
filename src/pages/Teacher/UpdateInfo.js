@@ -3,6 +3,8 @@ import logo from "../../assets/imgs/logo__1_-removebg-preview (1).png"; // Impor
 import { Calendar, BookOpen, User, Bell, CheckCircle } from "lucide-react";
 import userimg from "../../assets/imgs/alexander-hipp-iEEBWgY_6lA-unsplash.jpg";
 import Header from "../../components/Header";
+import { useInfoTeacher } from '../../components/Common/GetInfoTeacher'
+import Loader from '../../components/Common/Loader/Loader'
 const ProfilePage = () => {
   const [giangVien, setGiangVien] = useState({
     msgv: "GV123456",
@@ -16,6 +18,11 @@ const ProfilePage = () => {
   });
 
   const [isEditMode, setIsEditMode] = useState(false);
+  const { data: infoTeacher, loading } = useInfoTeacher()
+
+  if(loading) {
+    return <Loader />
+  }
 
   // Handle image change
   const handleImageChange = (e) => {
@@ -59,7 +66,7 @@ const ProfilePage = () => {
             <div className="md:w-1/3 flex justify-center items-center mb-6 md:mb-0">
               <div className="border-4 border-gray-300 rounded-full p-2">
                 <img
-                  src={giangVien.avatar}
+                  src={infoTeacher.imageBase64}
                   alt="User Avatar"
                   className="h-40 w-40 rounded-full shadow-lg hover:scale-110 transition-transform duration-300 ease-in-out"
                 />
@@ -73,7 +80,7 @@ const ProfilePage = () => {
             <div className="md:w-2/3 space-y-6">
               <div className="flex justify-between items-center">
                 <div className="font-medium text-gray-700 text-lg">Mã giảng viên:</div>
-                <div className="text-gray-500 text-lg">{giangVien.msgv}</div>
+                <div className="text-gray-500 text-lg">{infoTeacher.msgv}</div>
               </div>
               <div className="flex justify-between items-center">
                 <div className="font-medium text-gray-700 text-lg">Họ tên:</div>
@@ -81,12 +88,12 @@ const ProfilePage = () => {
                   <input
                     type="text"
                     name="ho_ten"
-                    value={giangVien.ho_ten}
+                    value={infoTeacher.ho_ten}
                     onChange={handleChange}
                     className="text-gray-500 text-lg px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
                   />
                 ) : (
-                  <div className="text-gray-500 text-lg">{giangVien.ho_ten}</div>
+                  <div className="text-gray-500 text-lg">{infoTeacher.ho_ten}</div>
                 )}
               </div>
 
@@ -96,12 +103,12 @@ const ProfilePage = () => {
                   <input
                     type="date"
                     name="ngay_sinh"
-                    value={giangVien.ngay_sinh}
+                    value={infoTeacher.ngay_sinh}
                     onChange={handleChange}
                     className="text-gray-500 text-lg px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
                   />
                 ) : (
-                  <div className="text-gray-500 text-lg">{giangVien.ngay_sinh}</div>
+                  <div className="text-gray-500 text-lg">{infoTeacher.ngay_sinh.split('T')[0]}</div>
                 )}
               </div>
 
@@ -110,7 +117,7 @@ const ProfilePage = () => {
                 {isEditMode ? (
                   <select
                     name="gioi_tinh"
-                    value={giangVien.gioi_tinh}
+                    value={infoTeacher.gioi_tinh}
                     onChange={handleChange}
                     className="text-gray-500 text-lg px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
                   >
@@ -119,7 +126,7 @@ const ProfilePage = () => {
                   </select>
                 ) : (
                   <div className="text-gray-500 text-lg">
-                    {giangVien.gioi_tinh === 1 ? "Nam" : "Nữ"}
+                    {infoTeacher.gioi_tinh === 1 ? "Nam" : "Nữ"}
                   </div>
                 )}
               </div>
@@ -130,12 +137,12 @@ const ProfilePage = () => {
                   <input
                     type="text"
                     name="dia_chi"
-                    value={giangVien.dia_chi}
+                    value={infoTeacher.dia_chi}
                     onChange={handleChange}
                     className="text-gray-500 text-lg px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
                   />
                 ) : (
-                  <div className="text-gray-500 text-lg">{giangVien.dia_chi}</div>
+                  <div className="text-gray-500 text-lg">{infoTeacher.dia_chi}</div>
                 )}
               </div>
 
@@ -145,12 +152,12 @@ const ProfilePage = () => {
                   <input
                     type="email"
                     name="email"
-                    value={giangVien.email}
+                    value={infoTeacher.email}
                     onChange={handleChange}
                     className="text-gray-500 text-lg px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
                   />
                 ) : (
-                  <div className="text-gray-500 text-lg">{giangVien.email}</div>
+                  <div className="text-gray-500 text-lg">{infoTeacher.email}</div>
                 )}
               </div>
 
@@ -160,12 +167,12 @@ const ProfilePage = () => {
                   <input
                     type="text"
                     name="sdt"
-                    value={giangVien.sdt}
+                    value={infoTeacher.sdt}
                     onChange={handleChange}
                     className="text-gray-500 text-lg px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
                   />
                 ) : (
-                  <div className="text-gray-500 text-lg">{giangVien.sdt}</div>
+                  <div className="text-gray-500 text-lg">{infoTeacher.sdt}</div>
                 )}
               </div>
             </div>

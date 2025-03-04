@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_URL = 'https://23tg8v1m-3333.asse.devtunnels.ms/api/schedule'
+const API_URL = 'http://localhost:3333/api/schedule'
 
 export const getClassSchedule = async () => {
     try {
@@ -13,6 +13,15 @@ export const getClassSchedule = async () => {
 
 
 export const getClassScheduleById = async (id) => {
+    try {
+      const response = await axios.get(`${API_URL}/class/date/${id}`);
+      return response.data;
+    } catch (error) {
+      return null;
+    }
+}
+
+export const getClassScheduleByClassIdAndDate = async (id) => {
     try {
       const response = await axios.get(`${API_URL}/class/date/${id}`);
       return response.data;

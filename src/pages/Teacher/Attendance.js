@@ -1,192 +1,392 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-import Header from "../../components/Header";
 import { useNavigate } from "react-router-dom";
-import { getSubjects } from '../../services/subjectService';
-import { getClasses } from '../../services/classService';
-import { getStudents } from '../../services/studentService';
-import {getClassScheduleById} from '../../services/classscheduleService'
+import Header from "../../components/Header";
+import { getSemesters } from '../../services/semesterService';
+import { getAllJoinSectionClassesByIdSemesterAndIdTeacher } from '../../services/sectionClassService';
+import { getClassByIdSection } from '../../services/classService';
+import { getStudentByIdClassAndIdSectionAndIdSchedule } from '../../services/studentService';
+import { getScheduleByIdSectionAndIdClassAndDay } from '../../services/scheduleService';
+import { addRollCall } from '../../services/rollCallService';
+import { useInfoTeacher } from '../../components/Common/GetInfoTeacher';
+import CellSubject from '../../components/Common/SubjectGetName';
+import CellClass from '../../components/Common/ClassGetName';
+import Toast from '../../components/Common/Toast/Toast';
+import Checkbok from '../../components/Common/Checkbok/Checkbox';
 
 const Attendance = () => {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterStatus, setFilterStatus] = useState("all");
-    const [selectedClass, setSelectedClass] = useState("Lớp A");
-    const [selectedSubject, setSelectedSubject] = useState("Toán");
-    const [students, setStudents] = useState([]);
-    const [subjects, setSubjects] = useState([]);
-    const [classes, setClasses] = useState([]);
-    const [fclasses, setfClasses] = useState([]);
-    const [qrData, setQrData] = useState("");
-    const [showQRModal, setShowQRModal] = useState(false);
-    const navigate = useNavigate();
-    
-    const [selectedDate, setSelectedDate] = useState(() => {
-        return new Date().toISOString().split("T")[0];
+    const [formData, setFormData] = useState({
+        semesters: [],
+        sections: [],
+        classes: [],
+        schedules: [],
+        selected: {
+            id_hoc_ky: '',
+            id_lop_hoc_phan: '',
+            id_lop: '',
+            id_lich_hoc: ''
+        },
+        students: [],
+        filteredStudents: [],
+        checkedStatus: {},
+        selectedSchedule: null,
+        result: { type: null, message: '' }
     });
+    const [isLoading, setIsLoading] = useState(false);
+    const { data: infoTeacher, loading: teacherLoading } = useInfoTeacher();
+    const sectionRef = useRef(null);
+    const classRef = useRef(null);
+    const scheduleRef = useRef(null);
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        async function fetchData() {
-            const dataMH = await getSubjects();
-            const dataCls = await getClasses();
-            const dataSV = await getStudents();
-        
-            if (Array.isArray(dataMH) && Array.isArray(dataCls) && Array.isArray(dataSV)) {
-                setSubjects(dataMH.map(subject => subject.ten_mon));
-                setClasses(dataCls.map(cls => cls.ten_lop));
-                setfClasses(dataCls);
-                setStudents(dataSV);
-            } else {
-                console.error("Dữ liệu không hợp lệ:", { dataMH, dataCls, dataSV });
-                setSubjects([]);
-                setClasses([]);
-                setStudents([]);
+    const onSelect = useCallback(async (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            selected: { ...prev.selected, [name]: value }
+        }));
+
+        if (value) {
+            setIsLoading(true);
+            try {
+                if (name === 'id_hoc_ky') {
+                    const data = await getAllJoinSectionClassesByIdSemesterAndIdTeacher(value, infoTeacher.id_giang_vien);
+                    setFormData((prev) => ({
+                        ...prev,
+                        sections: data,
+                        classes: [],
+                        schedules: [],
+                        students: [],
+                        filteredStudents: [],
+                        selected: { ...prev.selected, id_lop_hoc_phan: '', id_lop: '', id_lich_hoc: '' }
+                    }));
+                    if (sectionRef.current) sectionRef.current.value = '';
+                    if (classRef.current) classRef.current.value = '';
+                    if (scheduleRef.current) scheduleRef.current.value = '';
+                } else if (name === 'id_lop_hoc_phan') {
+                    const data = await getClassByIdSection(value);
+                    setFormData((prev) => ({
+                        ...prev,
+                        classes: data,
+                        schedules: [],
+                        students: [],
+                        filteredStudents: [],
+                        selected: { ...prev.selected, id_lop: '', id_lich_hoc: '' }
+                    }));
+                    if (classRef.current) classRef.current.value = '';
+                    if (scheduleRef.current) scheduleRef.current.value = '';
+                } else if (name === 'id_lop') {
+                    const data = await getScheduleByIdSectionAndIdClassAndDay(formData.selected.id_lop_hoc_phan, value);
+                    if(data){
+                        setFormData((prev) => ({
+                            ...prev,
+                            schedules: data,
+                            students: [],
+                            filteredStudents: [],
+                            selected: { ...prev.selected, id_lich_hoc: '' }
+                        }));
+                        if (scheduleRef.current) scheduleRef.current.value = '';
+                    }
+                    else {
+                        if (classRef.current) classRef.current.value = '';
+                        if (scheduleRef.current) scheduleRef.current.value = '';
+                    }
+                } else if (name === 'id_lich_hoc') {
+                    const data = await getStudentByIdClassAndIdSectionAndIdSchedule(formData.selected.id_lop, formData.selected.id_lop_hoc_phan, value);
+                    console.log(data);
+                    setFormData((prev) => ({
+                        ...prev,
+                        students: data,
+                        filteredStudents: data,
+                        selectedSchedule: value
+                    }));
+                }
+            } catch (error) {
+                setFormData((prev) => ({
+                    ...prev,
+                    result: { type: false, message: 'Lỗi khi tải dữ liệu' }
+                }));
+            } finally {
+                setIsLoading(false);
+            }
+        } else {
+            if (name === 'id_hoc_ky') {
+                setFormData((prev) => ({
+                    ...prev,
+                    sections: [],
+                    classes: [],
+                    schedules: [],
+                    students: [],
+                    filteredStudents: [],
+                    selected: { ...prev.selected, id_lop_hoc_phan: '', id_lop: '', id_lich_hoc: '' }
+                }));
+            } else if (name === 'id_lop_hoc_phan') {
+                setFormData((prev) => ({
+                    ...prev,
+                    classes: [],
+                    schedules: [],
+                    students: [],
+                    filteredStudents: [],
+                    selected: { ...prev.selected, id_lop: '', id_lich_hoc: '' }
+                }));
+            } else if (name === 'id_lop') {
+                setFormData((prev) => ({
+                    ...prev,
+                    schedules: [],
+                    students: [],
+                    filteredStudents: [],
+                    selected: { ...prev.selected, id_lich_hoc: '' }
+                }));
+            } else if (name === 'id_lich_hoc') {
+                setFormData((prev) => ({
+                    ...prev,
+                    students: [],
+                    filteredStudents: [],
+                    selectedSchedule: null
+                }));
             }
         }
-        fetchData();
+    }, [infoTeacher?.id_giang_vien, formData.selected.id_lop_hoc_phan, formData.selected.id_lop]);
+
+    const handleChangeSearch = useCallback((e) => {
+        const searchValue = e.target.value.toLowerCase();
+        const filtered = formData.students.filter(student =>
+            student.ho_ten.toLowerCase().includes(searchValue)
+        );
+        setFormData((prev) => ({ ...prev, filteredStudents: filtered }));
+    }, [formData.students]);
+
+    const handleCheck = useCallback((studentId, type) => {
+        console.log(studentId, type);
+        setFormData((prev) => ({
+            ...prev,
+            checkedStatus: { ...prev.checkedStatus, [studentId]: type }
+        }));
     }, []);
 
-    const handleClassChange = (e) => setSelectedClass(e.target.value);
-    const handleSubjectChange = (e) => setSelectedSubject(e.target.value);
-   
-
-    const toggleStatus = (id_sinh_vien) => {
-        setStudents(prev =>
-            prev.map(student =>
-                student.id_sinh_vien === id_sinh_vien
-                    ? { ...student, status: !student.status || true } // Nếu không có `status`, mặc định thành `true`
-                    : student
-            )
-        );
-    };
-
-    const filteredStudents = students.filter(student =>
-        student.ho_ten.toLowerCase().includes(searchTerm.toLowerCase()) && (selectedClass === "" || student.id_lop === fclasses.find(cls => cls.ten_lop === selectedClass)?.id_lop)
-        
-    );
- 
-
-    const handleGenerateQR = () => {
-        if (!selectedDate) {
-            alert("Vui lòng chọn ngày điểm danh");
-            return;
+    const handleSave = useCallback(async () => {
+        const { checkedStatus, selectedSchedule } = formData;
+        for (let studentId in checkedStatus) {
+            try {
+                const res = await addRollCall({
+                    id_lich_hoc: selectedSchedule,
+                    id_sinh_vien: studentId,
+                    status: checkedStatus[studentId]
+                });
+                if (res) {
+                    setFormData((prev) => ({
+                        ...prev,
+                        result: { type: true, message: 'Thành công!' }
+                    }));
+                    async function reload(){
+                        const data = await getStudentByIdClassAndIdSectionAndIdSchedule(formData.selected.id_lop, formData.selected.id_lop_hoc_phan, formData.selected.id_lich_hoc);
+                        setFormData((prev) => ({
+                            ...prev,
+                            students: data,
+                            filteredStudents: data
+                        }));
+                    }
+                    reload()
+                } else {
+                    setFormData((prev) => ({
+                        ...prev,
+                        result: { type: false, message: 'Thất bại!' }
+                    }));
+                }
+            } catch (error) {
+                setFormData((prev) => ({
+                    ...prev,
+                    result: { type: false, message: 'Lỗi khi lưu điểm danh' }
+                }));
+            }
         }
-        const baseURL = "http://localhost:3000";
-        const dataToEncode = `${baseURL}/student-attendance?class=${selectedClass}&subject=${selectedSubject}&date=${selectedDate}`;
-        setQrData(dataToEncode);
-        setShowQRModal(true);
-    };
+    }, [formData.checkedStatus, formData.selectedSchedule]);
 
-    const handleClick = () => {
-        navigate("/FaceID/input", { state: { selectedSubject } });
-           console.log("TEST DU LIEU LOP:   ",selectedSubject);
-    };
+    useEffect(() => {
+        const fetchSemesters = async () => {
+            setIsLoading(true);
+            try {
+                const data = await getSemesters();
+                setFormData((prev) => ({ ...prev, semesters: data }));
+            } catch (error) {
+                setFormData((prev) => ({
+                    ...prev,
+                    result: { type: false, message: 'Lỗi tải học kỳ' }
+                }));
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchSemesters();
+    }, []);
 
-    const handleDateChange = (e) => setSelectedDate(e.target.value);
+    const filteredStudents = useMemo(() => formData.filteredStudents, [formData.filteredStudents]);
 
-    const handleSaveAttendance = () => {
-        if (!selectedDate) {
-            alert("Vui lòng chọn ngày điểm danh");
-            return;
+    useEffect(() => {
+        if (formData.students.length > 0) {
+            const initialCheckedStatus = {};
+            formData.students.forEach(student => {
+                if (student.status) {
+                    initialCheckedStatus[student.id_sinh_vien] = student.status;
+                }
+            });
+            setFormData(prev => ({ ...prev, checkedStatus: initialCheckedStatus }));
         }
-        setStudents(prevStudents =>
-            prevStudents.map(student => ({ ...student, date: selectedDate }))
-        );
-        alert("Điểm danh đã được lưu thành công!");
-    };
+    }, [formData.students])
+
+    const handleQR = (e) => {
+
+    }
+
+    const handleKM = (e) => {
+        navigate('../FaceID/input')
+    }
 
     return (
-        <div className="min-h-screen from-blue-800 to-white text-black flex flex-col">
+        <div className="min-h-screen from-blue-800 to-white text-black flex flex-col mt-24">
             <Header />
             <div className="p-6 bg-gray-100 min-h-screen text-black">
-                <h1 className="text-xl md:text-3xl font-bold text-black text-center">Điểm danh sinh viên</h1>
+                <h1 className="text-xl md:text-2xl font-bold text-red-500 text-center">Điểm danh sinh viên</h1>
                 <div className="mt-4 flex flex-col md:flex-row gap-4">
+                    <select
+                        className="px-3 py-2 outline-none border rounded-lg shadow-md bg-white focus:ring-2 focus:ring-blue-400"
+                        onChange={onSelect}
+                        name="id_hoc_ky"
+                        value={formData.selected.id_hoc_ky}
+                    >
+                        <option value="">Chọn học kỳ</option>
+                        {formData.semesters.map((semester) => (
+                            <option key={semester.id_hoc_ky} value={semester.id_hoc_ky}>{semester.ten_hoc_ky} - ({semester.nien_khoa})</option>
+                        ))}
+                    </select>
+                    <select
+                        className="px-3 py-2 border outline-none rounded-lg shadow-md bg-white focus:ring-2 focus:ring-blue-400"
+                        onChange={onSelect}
+                        name="id_lop_hoc_phan"
+                        ref={sectionRef}
+                        disabled={!formData.selected.id_hoc_ky}
+                    >
+                        <option value="">Chọn lớp học phần</option>
+                        {formData.sections.map((section) => (
+                            <option key={section.id_lop_hoc_phan} value={section.id_lop_hoc_phan}>{section.ms_lop_hoc_phan} - <CellSubject Id={section.id_mon_hoc} /></option>
+                        ))}
+                    </select>
+                    <select
+                        className="px-3 py-2 border outline-none rounded-lg shadow-md bg-white focus:ring-2 focus:ring-blue-400"
+                        onChange={onSelect}
+                        name="id_lop"
+                        ref={classRef}
+                        disabled={!formData.selected.id_lop_hoc_phan}
+                    >
+                        <option value="">Chọn lớp học</option>
+                        {formData.classes.map((classs) => (
+                            <option key={classs.id_lop} value={classs.id_lop}><CellClass Id={classs.id_lop} /></option>
+                        ))}
+                    </select>
+                    <select
+                        className="px-3 py-2 border outline-none rounded-lg shadow-md bg-white focus:ring-2 focus:ring-blue-400"
+                        onChange={onSelect}
+                        name="id_lich_hoc"
+                        ref={scheduleRef}
+                        disabled={!formData.selected.id_lop}
+                    >
+                        <option value="">Chọn tiết</option>
+                        {formData.schedules.map((schedule) => (
+                            <option key={schedule.id_lich_hoc} value={schedule.id_lich_hoc}>
+                                {schedule.session === 1 ? "Sáng: " : "Chiều: "} Tiết
+                                ({schedule.tu_tiet} - {schedule.den_tiet})
+                                {schedule.loai === 1 ? " - Lý thuyết" : " - Thực hành"}
+                            </option>
+                        ))}
+                    </select>
                     <input
                         type="text"
-                        placeholder="Tìm kiếm sinh viên..."
-                        className="px-4 py-2 border rounded-lg shadow-sm w-full focus:ring focus:ring-blue-300"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Nhập MSSV..."
+                        onChange={handleChangeSearch}
+                        className="px-3 py-2 border rounded-lg shadow-md outline-none bg-white focus:ring-2 focus:ring-blue-400"
                     />
-                    <select
-                        className="px-4 py-2 border rounded-lg shadow-sm focus:ring focus:ring-blue-300 w-full md:w-auto"
-                        value={selectedClass}
-                        onChange={handleClassChange}
-                    >
-                        <option value="">Chọn Lớp</option>
-                        {classes.map((cls, index) => (
-                            <option key={index} value={cls}>{cls}</option>
-                        ))}
-                    </select>
-                    <select
-                        className="px-4 py-2 border rounded-lg shadow-sm focus:ring focus:ring-blue-300 w-full md:w-auto"
-                        value={selectedSubject}
-                        onChange={handleSubjectChange}
-                    >
-                        <option value="">Chọn môn học</option>
-                        {subjects.map((subj, index) => (
-                            <option key={index} value={subj}>{subj}</option>
-                        ))}
-                    </select>
-                    <button onClick={handleGenerateQR} className="px-3 py-1 bg-blue-600 text-white rounded-md">
+                    <button className="px-3 py-1 bg-blue-600 text-white rounded-md" onClick={handleQR}>
                         Tạo QR
                     </button>
-                    <button onClick={handleClick} className="px-3 py-1 bg-blue-600 text-white rounded-md">
+                    <button className="px-3 py-1 bg-blue-600 text-white rounded-md" onClick={handleKM}>
                         Điểm danh KM
                     </button>
                 </div>
 
                 <div className="mt-6 bg-white p-4 rounded-lg shadow-lg overflow-x-auto">
-                    {filteredStudents.length === 0 ? (
-                        <p className="text-gray-500 text-center">Không tìm thấy sinh viên...</p>
+                    {isLoading ? (
+                        <div className="text-center py-4">Đang tải dữ liệu...</div>
                     ) : (
-                        <table className="w-full border-collapse border">
+                        <table className="w-full border-collapse shadow-lg rounded-lg overflow-hidden">
                             <thead>
-                                <tr className="bg-gray-200 text-center">
-                                    <th className="p-2">STT</th>
-                                    <th className="p-2">MSSV</th>
-                                    <th className="p-2">Họ và Tên</th>
-                                    <th className="p-2">Ngày</th>
-                                    <th className="p-2">Trạng thái</th>
+                                <tr className="bg-blue-600 text-white">
+                                    <th className="p-3 text-center" rowSpan={2}>STT</th>
+                                    <th className="p-3 text-center" rowSpan={2}>MSSV</th>
+                                    <th className="p-3 text-center" rowSpan={2}>Tên sinh viên</th>
+                                    <th className="p-3 text-center" rowSpan={2}>Ngày Điểm Danh</th>
+                                    <th className="p-3 text-center" colSpan={3}>Trạng thái</th>
+                                </tr>
+                                <tr className="bg-blue-600 text-white">
+                                    <th className="font-semibold">Có mặt</th>
+                                    <th className="font-semibold">Vắng (P)</th>
+                                    <th className="font-semibold">Vắng (K)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredStudents.map((student, index) => (
-                                    <tr key={student.id_sinh_vien} className="border-b hover:bg-gray-100 text-center">
-                                        <td className="p-2">{index + 1}</td>
-                                        <td className="p-2">{student.mssv}</td>
-                                        <td className="p-2 text-center">{student.ho_ten}</td>
-                                        <td className="p-2">{selectedDate}</td>
-                                        <td className="p-2 flex items-center justify-center">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={!!student.status} 
-                                                onChange={() => toggleStatus(student.id_sinh_vien)} 
-                                                className="mr-2" 
-                                            />
-                                        </td>
+                                {filteredStudents.length > 0 ? (
+                                    filteredStudents.map((student, index) => (
+                                        <tr key={index} className="border-b text-center hover:bg-blue-50 transition">
+                                            <td className="p-2 text-center">{index + 1}</td>
+                                            <td className="p-2 text-center">{student.mssv}</td>
+                                            <td className="p-2 text-center">{student.ho_ten}{student.id_lop_hoc_phan === null ? <span className="text-red-600 font-bold block"> (Chưa đăng ký học phần)</span> : ''}</td>
+                                            <td className="p-2 text-center">
+                                                {student.id_lop_hoc_phan !== null
+                                                    ? (
+                                                        student.thoi_gian !== null ? (
+                                                            new Date(student.thoi_gian).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+                                                        ) : <span className="text-blue-600 font-bold block"> (Chưa điểm danh)</span>
+                                                    )
+                                                    : <span className="text-red-600 font-bold block"> (Chưa đăng ký học phần)</span>
+                                                }
+                                            </td>
+                                            <td className="p-2 text-center">
+                                                <Checkbok
+                                                    checked={formData.checkedStatus[student.idsv] === 'comat'}
+                                                    onChange={() => handleCheck(student.idsv, "comat")}
+                                                    disabled={student.id_lop_hoc_phan === null || student.id_diem_danh !== null}
+                                                />
+                                            </td>
+                                            <td className="p-2 text-center">
+                                                <Checkbok
+                                                    checked={formData.checkedStatus[student.idsv] === 'vangP'}
+                                                    onChange={() => handleCheck(student.idsv, "vangP")}
+                                                    disabled={student.id_lop_hoc_phan === null || student.id_diem_danh !== null}
+                                                />
+                                            </td>
+                                            <td className="p-2 text-center">
+                                                <Checkbok
+                                                    checked={formData.checkedStatus[student.idsv] === 'vangK'}
+                                                    onChange={() => handleCheck(student.idsv, "vangK")}
+                                                    disabled={student.id_lop_hoc_phan === null || student.id_diem_danh !== null}
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="7" className="p-3 text-center text-gray-500">Chưa có dữ liệu sinh viên</td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     )}
-                    
-                    {showQRModal && (
-                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                            <div className="bg-white p-6 rounded-lg shadow-2xl max-w-md w-full">
-                                <h2 className="text-2xl font-bold text-center text-blue-600">Mã QR Điểm Danh</h2>
-                                <div className="flex justify-center my-4">
-                                    <QRCodeCanvas value={qrData} size={300} className="rounded-lg shadow-lg border border-gray-300 p-2" />
-                                </div>
-                                <button onClick={() => setShowQRModal(false)} className="mt-4 px-6 py-2 bg-red-500 text-white rounded-lg w-full hover:bg-red-600">Đóng</button>
-                            </div>
-                        </div>
-                    )}
-
-                    <button onClick={handleSaveAttendance} className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 w-full md:w-auto">
+                    <button onClick={handleSave} className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 w-full md:w-auto">
                         Lưu điểm danh
                     </button>
                 </div>
             </div>
+            {formData.result.type === true ? <Toast type="success" message={formData.result.message} onClose={() => setFormData(prev => ({ ...prev, result: { type: null, message: '' } }))} /> : ''}
+            {formData.result.type === false ? <Toast type="error" message={formData.result.message} onClose={() => setFormData(prev => ({ ...prev, result: { type: null, message: '' } }))} /> : ''}
         </div>
     );
 };

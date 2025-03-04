@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_URL = 'https://23tg8v1m-3333.asse.devtunnels.ms/api/class'
+const API_URL = 'http://localhost:3333/api/class'
 
 export const getClasses = async () => {
     try {
@@ -41,6 +41,15 @@ export const updateClass = async (id, classs) => {
 export const getClassById = async (id) => {
     try {
       const response = await axios.get(`${API_URL}/${id}`);
+      return response.data;
+    } catch (error) {
+      return null;
+    }
+}
+
+export const getClassByIdSection = async (id) => {
+    try {
+      const response = await axios.get(`${API_URL}/semester/${id}`);
       return response.data;
     } catch (error) {
       return null;

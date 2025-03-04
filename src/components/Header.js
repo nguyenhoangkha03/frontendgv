@@ -1,22 +1,25 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Calendar, BookOpen, CheckCircle, Bell, User, Menu, UserCircle, LogOut, X } from "lucide-react";
 import logo from "../assets/imgs/logo__1_-removebg-preview (1).png";
+import { useInfoTeacher } from './Common/GetInfoTeacher'
+import Loader from '../components/Common/Loader/Loader'
 
 const menuItems = [
   { title: "Xem lịch dạy", path: "/teacher/schedule", icon: <Calendar size={18} /> },
   { title: "Quản lý điểm", path: "/teacher/grades", icon: <BookOpen size={18} /> },
   { title: "Điểm danh", path: "/teacher/attendance", icon: <CheckCircle size={18} /> },
   { title: "Xem thông báo", path: "/teacher/notifications", icon: <Bell size={18} /> },
-  { title: "Chấm công", path: "/teacher/payroll", icon: <User size={18} /> },
+  { title: "Trang cá nhân", path: "/teacher/profile", icon: <User size={18} /> },
   // { title: "Điểm danh", path: "/FaceID/input", icon: <User size={18} /> },
 ];
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const { data: infoTeacher, loading } = useInfoTeacher()
+  const navigate = useNavigate()
 
-  // Khi mở menu mobile, chặn cuộn trang
   React.useEffect(() => {
     if (menuOpen) {
       document.body.style.overflow = "hidden";
@@ -25,12 +28,22 @@ export default function Header() {
     }
   }, [menuOpen]);
 
+  if(loading) {
+    return <Loader />
+  }
+
+  const handleLogout = () => {
+      localStorage.removeItem('token')
+      navigate('/login')
+      return
+  }
+
   return (
     <>
       {/* Navigation Bar */}
-      <nav className="bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 p-4 flex items-center justify-between shadow-lg rounded-lg mx-4 mt-4">
+      <nav className="fixed z-50 left-0 top-0 right-0 bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 p-4 flex items-center justify-between shadow-lg rounded-lg mx-1">
         <Link to="/">
-          <img src={logo} alt="Logo" className="h-14 w-auto" />
+          <img src={logo} alt="Logo" className="h-16 w-auto" />
         </Link>
 
         {/* Desktop Menu */}
@@ -52,11 +65,11 @@ export default function Header() {
         {/* User Profile & Dropdown */}
         <div className="relative group">
           <div className="flex items-center space-x-4 cursor-pointer">
-            <span className="hidden sm:block text-white font-medium">Nguyễn Văn A</span>
+            <span className="hidden sm:block text-white font-medium">{infoTeacher.ho_ten}</span>
             <img
-              src="/user-avatar.png"
+              src={infoTeacher.imageBase64}
               alt="User Avatar"
-              className="h-8 w-8 rounded-full border-2 border-white"
+              className="h-12 w-12 rounded-full border-2 border-white"
             />
           </div>
 
@@ -67,9 +80,9 @@ export default function Header() {
                 <UserCircle size={20} className="text-gray-600" />    
                 <Link to="/teacher/Update-Info" className="hover:text-blue-500 transition">Thông tin cá nhân</Link>
               </li>
-              <li className="flex items-center space-x-2">
+              <li className="flex items-center space-x-2" onClick={handleLogout}>
                 <LogOut size={20} className="text-gray-600" />
-                <Link to="/logout" className="hover:text-blue-500 transition">Đăng xuất</Link>
+                <Link to="" className="hover:text-blue-500 transition">Đăng xuất</Link>
               </li>
             </ul>
           </div>
