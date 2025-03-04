@@ -1,7 +1,7 @@
 import axios from "axios"
 
 console.log("Axios:", axios)
-const API_URL = 'http://localhost:3333/api/student'
+const API_URL = 'https://23tg8v1m-3333.asse.devtunnels.ms/api/student'
 
 export const getStudents = async () => {
     try {

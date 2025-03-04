@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:3333/api/faceregister"; // Đúng cấu trúc endpoint
+const API_URL = "https://23tg8v1m-3333.asse.devtunnels.ms/api/faceregister"; // Đúng cấu trúc endpoint
 
 // Gửi ảnh lên server
 export const uploadImage = async (imageSrc, valueInput) => {

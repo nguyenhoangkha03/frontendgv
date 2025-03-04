@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_URL = 'http://localhost:3333/api/class'
+const API_URL = 'https://23tg8v1m-3333.asse.devtunnels.ms/api/class'
 
 export const getClasses = async () => {
     try {

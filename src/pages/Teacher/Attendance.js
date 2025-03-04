@@ -13,6 +13,7 @@ import CellSubject from '../../components/Common/SubjectGetName';
 import CellClass from '../../components/Common/ClassGetName';
 import Toast from '../../components/Common/Toast/Toast';
 import Checkbok from '../../components/Common/Checkbok/Checkbox';
+import QRGenerator from '../../components/Common/QR/QRGenerator';
 
 const Attendance = () => {
     const [formData, setFormData] = useState({
@@ -38,6 +39,7 @@ const Attendance = () => {
     const classRef = useRef(null);
     const scheduleRef = useRef(null);
     const navigate = useNavigate();
+    const [showQR, setShowQR] = useState(false);
 
     const onSelect = useCallback(async (e) => {
         const { name, value } = e.target;
@@ -235,7 +237,7 @@ const Attendance = () => {
     }, [formData.students])
 
     const handleQR = (e) => {
-
+        setShowQR(!showQR)
     }
 
     const handleKM = (e) => {
@@ -387,6 +389,9 @@ const Attendance = () => {
             </div>
             {formData.result.type === true ? <Toast type="success" message={formData.result.message} onClose={() => setFormData(prev => ({ ...prev, result: { type: null, message: '' } }))} /> : ''}
             {formData.result.type === false ? <Toast type="error" message={formData.result.message} onClose={() => setFormData(prev => ({ ...prev, result: { type: null, message: '' } }))} /> : ''}
+            {showQR && (
+                <QRGenerator classId={formData.selected.id_lop} setHide={() => setShowQR(false)} scheduleId={formData.selected.id_lich_hoc} />
+            )}
         </div>
     );
 };

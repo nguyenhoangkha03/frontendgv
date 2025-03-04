@@ -65,7 +65,7 @@ const FaceRecognition = ({ selectedSubject }) => {
           const now = new Date();
           const timeString = now.toLocaleTimeString("en-GB", { hour12: false });
 
-          const response = await fetch("http://localhost:3333/api/diem-danh", {
+          const response = await fetch("https://23tg8v1m-3333.asse.devtunnels.ms/api/diem-danh", {
               method: "POST",
               headers: {
                   "Content-Type": "application/json",
